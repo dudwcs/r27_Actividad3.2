@@ -1,5 +1,5 @@
 <?php
-require_once 'connection.php';
+require_once 'conexion.php';
 function getPublishers(): array
 {
     try {
@@ -19,7 +19,7 @@ function getPublishers(): array
     }
 }
 
-function getPublisherById(int $id): array
+function getPublisherById(int $id): array|false
 {
     try {
 
@@ -57,7 +57,7 @@ function showPublishers(array $data)
 
             echo '</form>';
 
-            echo '<form action="index.php" method="POST" class="d-inline" onsubmit="return confirm(\'¿Eliminar esta editorial con id '.$id.' ?\');">';
+            echo '<form action="index.php" method="POST" class="d-inline" onsubmit="return confirm(\'¿Eliminar esta editorial con id ' . $id . ' ?\');">';
 
             echo "<input type=\"hidden\" name=\"id\" value=\"{$id}\">";
 
@@ -93,7 +93,9 @@ function insertPublisher(string $nombre): bool|string
         $con->commit();
         return $id;
     } catch (PDOException $e) {
-        $con->rollBack();
+        if (isset($con) && $con->inTransaction()) {
+            $con->rollBack();
+        }
         error_log("Ha ocurrido una excepción insertando en publishers: " . $e->getMessage());
         throw $e;
     } finally {
@@ -111,11 +113,15 @@ function deletePublisher(int $id): bool
         $stmt = $con->prepare("DELETE FROM publishers WHERE publisher_id = ?");
         $stmt->bindParam(1, $id);
         $stmt->execute();
-        
-        return $con->commit();
-      
+        $eliminados = $stmt->rowCount();
+        $con->commit();
+
+        return $eliminados > 0;
+
     } catch (PDOException $e) {
-        $con->rollBack();
+        if (isset($con) && $con->inTransaction()) {
+            $con->rollBack();
+        }
         error_log("Ha ocurrido una excepción insertando en publishers: " . $e->getMessage());
         throw $e;
     } finally {
@@ -128,16 +134,16 @@ function updatePublisher(int $id, string $new_name): bool
 {
     try {
         $con = getConnection();
-      
+
         $stmt = $con->prepare("UPDATE publishers SET name= ? WHERE publisher_id = ?");
         $stmt->bindParam(1, $new_name);
         $stmt->bindValue(2, $id);
 
-        return $stmt->execute();       
-         
-      
+        return $stmt->execute();
+
+
     } catch (PDOException $e) {
-       
+    
         error_log("Ha ocurrido una excepción insertando en publishers: " . $e->getMessage());
         throw $e;
     } finally {
